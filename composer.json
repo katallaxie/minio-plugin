@@ -1,0 +1,12 @@
+{
+  "name": "katallaxie/minio-plugin",
+  "type": "wordpress-plugin",
+  "homepage": "https://github.com/katallaxie/minio",
+  "license": "MIT",
+  "description": "Use Minio on your WordPress to store your precious assets.",
+  "keywords": ["plugin","minio","s3","cdn"],
+  "require": {
+    "composer/installers": "~1.0.6",
+    "aws/aws-sdk-php": "^3.32"
+  }
+}
