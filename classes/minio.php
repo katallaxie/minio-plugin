@@ -14,6 +14,8 @@ final class Minio {
     static $slug = 'minio';
     static $version;
 
+    protected static $skip_image_filters = false;
+
     function __construct( $plugin_file_path, $version = null, $slug = null ) {
       if ( ! is_null( $slug ) ) {
         self::$slug = $slug;
@@ -51,62 +53,35 @@ final class Minio {
       $this->filter_local   = new Minio_Local_To_S3( $this );
       $this->filter_s3      = new Minio_S3_To_Local( $this );
 
-      add_filter( 'wp_handle_upload_prefilter', array( &$this, 'wp_handle_upload_prefilter' ), 1 );
-		  add_filter( 'wp_handle_sideload_prefilter', array( &$this, 'wp_handle_upload_prefilter' ), 1 );
-		  add_filter( 'wp_update_attachment_metadata', array( &$this, 'wp_update_attachment_metadata' ), 110, 2 );
-		  add_filter( 'delete_attachment', array( &$this, 'delete_attachment' ), 20 );
-		  add_filter( 'update_attached_file', array( &$this, 'update_attached_file' ), 100, 2 ); 
+      add_filter( 'upload_dir', array( &$this, 'filter_upload_dir' ) );
+      add_filter( 'pre_option_uploads_use_yearmonth_folders', '__return_null' );
+      // add_filter( 'plupload_init', array( &$this, 'plupload_init' ) );
+      add_filter('wp_handle_upload ', 'custom_upload_filter' );
+
+function custom_upload_filter( $file ){
+    var_dump($file);
+    wp_die();
+    $file['name'] = 'wordpress-is-awesome-' . $file['name'];
+    return $file;
+}
     }
 
-    function wp_handle_upload_prefilter( $file ) {
-		  // Get Post ID if uploaded in post screen.
-		  $post_id = filter_input( INPUT_POST, 'post_id', FILTER_VALIDATE_INT );
-		  $file['name'] = $this->filter_unique_filename( $file['name'], $post_id );
-		  return $file;
-	  }
-
-    function filter_unique_filename( $filename, $post_id = null ) {
-		
-      if ( ! $this->get_option( 'minio_copy_to_s3' ) ) {
-			  return $filename;
-		  }
-
-      // sanitize the file name before we begin processing
-      $filename = sanitize_file_name( $filename );
-      // Get base filename without extension.
-      $ext  = pathinfo( $filename, PATHINFO_EXTENSION );
-      $ext  = $ext ? ".$ext" : '';
-      $name = wp_basename( $filename, $ext );
-      // Edge case: if file is named '.ext', treat as an empty name.
-      if ( $name === $ext ) {
-        $name = '';
+    function filter_upload_dir( $param ) {
+      if ( self::$skip_image_filters ) {
+        return $param;
       }
-      // Rebuild filename with lowercase extension as S3 will have converted extension on upload.
-      $ext      = strtolower( $ext );
-      $filename = $name . $ext;
-      $time     = current_time( 'mysql' );
-      // Get time if uploaded in post screen.
-      if ( ! empty( $post_id ) ) {
-        $time = $this->get_post_time( $post_id );
-      }
-      if ( ! $this->does_file_exist( $filename, $time ) ) {
-        // File doesn't exist locally or on S3, return it.
-        return $filename;
-      }
-      $filename = $this->generate_unique_filename( $name, $ext, $time );
-      
-      return $filename;
-	  }
 
-    function generate_unique_filename( $name, $ext, $time ) {
-		  $count    = 1;
-		  $filename = $name . $count . $ext;
-		  while ( $this->does_file_exist( $filename, $time ) ) {
-			  $count++;
-			  $filename = $name . $count . $ext;
-		  }
-		  return $filename;
-	  }
+      $param = array(
+        'path'    => $this->get_s3path(),
+        'url'     => $this->get_url(),
+        'basedir' => $this->get_s3path(),
+        'baseurl' => $this->get_url(),
+        'subdir'  => '',
+        'error'   => false
+      );
+
+      return $param;
+    }
 
     function get_s3client() {
       if ( is_null ( $this->s3client ) ) {
@@ -122,8 +97,21 @@ final class Minio {
         );
         $this->set_s3client( new Aws\S3\S3Client( $args ) );
       }
-      
+
+      $this->s3client->registerStreamWrapper();
+
+      // $data = file_get_contents('s3://padaphant/20101205-081245.jpg');
+      // echo $data;
+
       return $this->s3client;
+    }
+
+    function get_url() {
+      return trailingslashit( $this->endpoint ) . $this->bucket;
+    }
+
+    function get_s3path() {
+      return 's3://' . $this->bucket;
     }
 
     function does_file_exist_s3( $filename, $time ) {
