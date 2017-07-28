@@ -57,10 +57,21 @@ final class Minio {
       add_filter( 'pre_option_uploads_use_yearmonth_folders', '__return_null' );
       // add_filter( 'plupload_init', array( &$this, 'plupload_init' ) );
       add_filter('wp_handle_upload ', 'custom_upload_filter' );
-      add_filter( 'wp_handle_upload_prefilter', array( &$this, 'upload_prefilter' ) );
+      add_filter( 'wp_handle_upload_prefilter', array( &$this, 'filter_upload_prefilter' ) );
+
+      add_action( 'delete_attachment', array( &$this, 'delete_attachment' ) );
     }
 
-    function upload_prefilter( $file ) {
+    function delete_attachment( $post_id ) {
+      if ( ! $meta_data = wp_get_attachment_metadata( $post_id ) )
+        return;
+
+      foreach( $meta_data['sizes'] as $size ) {
+        @wp_delete_file( trailingslashit( $this->get_s3path() ) . $size['file'] );
+      }
+    }
+
+    function filter_upload_prefilter( $file ) {
       if ( ! get_option( 'minio_unique_filename' ) )
         return $file;
 
