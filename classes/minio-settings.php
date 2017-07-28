@@ -61,7 +61,7 @@ final class Minio_Settings{
 
 		$args = array(
 			'id'				    => 'minio_bucket',
-			'title'				  => __( 'Endpoint' ),
+			'title'				  => __( 'Bucket' ),
 			'page'				  => 'minio_settings_page',
 			'section'			  => 'minio_credentials',
 			'description'	  => __( '' ),
