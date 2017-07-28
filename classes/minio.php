@@ -57,13 +57,20 @@ final class Minio {
       add_filter( 'pre_option_uploads_use_yearmonth_folders', '__return_null' );
       // add_filter( 'plupload_init', array( &$this, 'plupload_init' ) );
       add_filter('wp_handle_upload ', 'custom_upload_filter' );
+      add_filter( 'wp_handle_upload_prefilter', array( &$this, 'upload_prefilter' ) );
+    }
 
-function custom_upload_filter( $file ){
-    var_dump($file);
-    wp_die();
-    $file['name'] = 'wordpress-is-awesome-' . $file['name'];
-    return $file;
-}
+    function upload_prefilter( $file ) {
+      if ( ! get_option( 'minio_unique_filename' ) )
+        return $file;
+
+      $file_info  = pathinfo( $file['name'] );
+      $file_hash  = crc32( json_encode( array( $file_info['basename'], current_time( 'mysql' ) ) ) );
+      $file_time  = date( 'Ymd', current_time( 'timestamp', 0 ) );
+      $file_ext   = $file_info['extension'];
+      $file['name'] = "$file_time-$file_hash.$file_ext";
+
+      return $file;
     }
 
     function filter_upload_dir( $param ) {
@@ -111,7 +118,7 @@ function custom_upload_filter( $file ){
     }
 
     function get_s3path() {
-      return 's3://' . $this->bucket;
+      return "s3://$this->bucket";
     }
 
     function does_file_exist_s3( $filename, $time ) {

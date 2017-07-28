@@ -7,7 +7,7 @@ final class Minio_Settings{
     add_action( 'admin_init', array( &$this, 'register_settings' ) );
 		add_action( 'admin_notices', array( &$this, 'admin_notices' ) );
     add_action( 'admin_enqueue_scripts',array( &$this, 'admin_scripts' ) );
-  }
+	}
 
   public function admin_scripts() {
     wp_register_style( 'minio_admin_style', MINIO__PLUGIN_URL . 'admin/admin.css', false, Minio::$version );
@@ -79,15 +79,15 @@ final class Minio_Settings{
     $settings = new Minio_Settings_Section( $args );
 
 		$args = array(
-			'id'				    => 'minio_copy_to_s3',
-			'title'				  => __( 'Copy to Minio' ),
+			'id'				    => 'minio_unique_filename',
+			'title'				  => __( 'Unique Filename' ),
 			'page'				  => 'minio_settings_page',
 			'section'			  => 'minio_settings',
 			'description'	  => __( '' ),
 			'type'				  => 'checkbox', // text, textarea, password, checkbox
 			'option_group'	=> 'settings_page_minio_settings_page',
 		);
-		$copy_to_s3 = new Minio_Settings_Field( $args );
+		$unique_filename = new Minio_Settings_Field( $args );
 
   }
 
